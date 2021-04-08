@@ -1,26 +1,45 @@
 import copy
-from .paddings import PaddingBase
+
 from py3rijndael.constants import (
-    shifts, r_con, num_rounds, S, Si,
-    U1, U2, U3, U4,
-    T1, T2, T3, T4, T5, T6, T7, T8
+    T1,
+    T2,
+    T3,
+    T4,
+    T5,
+    T6,
+    T7,
+    T8,
+    U1,
+    U2,
+    U3,
+    U4,
+    S,
+    Si,
+    r_con,
+    shifts,
 )
+from py3rijndael.paddings import PaddingBase
 
 
 class Rijndael:
-
-    def __init__(self, key, block_size: int = 16):
+    def __init__(self, key: bytes, block_size: int = 16):
 
         if block_size not in (16, 24, 32):
-            raise ValueError('Invalid block size: %s' % str(block_size))
+            raise ValueError("Invalid block size: %s" % str(block_size))
 
         if len(key) not in (16, 24, 32):
-            raise ValueError('Invalid key size: %s' % str(len(key)))
+            raise ValueError("Invalid key size: %s" % str(len(key)))
 
         self.block_size = block_size
         self.key = key
 
-        rounds = num_rounds[len(key)][block_size]
+        if block_size == 32 or len(key) == 32:
+            rounds = 14
+        elif block_size == 16 and len(key) == 16:
+            rounds = 10
+        else:
+            rounds = 12
+
         b_c = block_size // 4
         # encryption round keys
         k_e = [[0] * b_c for _ in range(rounds + 1)]
@@ -32,8 +51,12 @@ class Rijndael:
         # copy user material bytes into temporary ints
         tk = []
         for i in range(0, k_c):
-            tk.append((ord(key[i * 4:i * 4 + 1]) << 24) | (ord(key[i * 4 + 1:i * 4 + 1 + 1]) << 16) |
-                      (ord(key[i * 4 + 2: i * 4 + 2 + 1]) << 8) | ord(key[i * 4 + 3:i * 4 + 3 + 1]))
+            tk.append(
+                key[i * 4] << 24
+                | key[i * 4 + 1] << 16
+                | key[i * 4 + 2] << 8
+                | key[i * 4 + 3]
+            )
 
         # copy values into round key arrays
         t = 0
@@ -47,11 +70,13 @@ class Rijndael:
         while t < round_key_count:
             # extrapolate using phi (the round key evolution function)
             tt = tk[k_c - 1]
-            tk[0] ^= (S[(tt >> 16) & 0xFF] & 0xFF) << 24 ^ \
-                     (S[(tt >> 8) & 0xFF] & 0xFF) << 16 ^ \
-                     (S[tt & 0xFF] & 0xFF) << 8 ^ \
-                     (S[(tt >> 24) & 0xFF] & 0xFF) ^ \
-                     (r_con[r_con_pointer] & 0xFF) << 24
+            tk[0] ^= (
+                (S[(tt >> 16) & 0xFF] & 0xFF) << 24
+                ^ (S[(tt >> 8) & 0xFF] & 0xFF) << 16
+                ^ (S[tt & 0xFF] & 0xFF) << 8
+                ^ (S[(tt >> 24) & 0xFF] & 0xFF)
+                ^ (r_con[r_con_pointer] & 0xFF) << 24
+            )
             r_con_pointer += 1
             if k_c != 8:
                 for i in range(1, k_c):
@@ -60,10 +85,12 @@ class Rijndael:
                 for i in range(1, k_c // 2):
                     tk[i] ^= tk[i - 1]
                 tt = tk[k_c // 2 - 1]
-                tk[k_c // 2] ^= (S[tt & 0xFF] & 0xFF) ^ \
-                                (S[(tt >> 8) & 0xFF] & 0xFF) << 8 ^ \
-                                (S[(tt >> 16) & 0xFF] & 0xFF) << 16 ^ \
-                                (S[(tt >> 24) & 0xFF] & 0xFF) << 24
+                tk[k_c // 2] ^= (
+                    (S[tt & 0xFF] & 0xFF)
+                    ^ (S[(tt >> 8) & 0xFF] & 0xFF) << 8
+                    ^ (S[(tt >> 16) & 0xFF] & 0xFF) << 16
+                    ^ (S[(tt >> 24) & 0xFF] & 0xFF) << 24
+                )
                 for i in range(k_c // 2 + 1, k_c):
                     tk[i] ^= tk[i - 1]
             # copy values into round key arrays
@@ -78,22 +105,20 @@ class Rijndael:
             for j in range(b_c):
                 tt = k_d[r][j]
                 k_d[r][j] = (
-                    U1[(tt >> 24) & 0xFF] ^
-                    U2[(tt >> 16) & 0xFF] ^
-                    U3[(tt >> 8) & 0xFF] ^
-                    U4[tt & 0xFF]
+                    U1[(tt >> 24) & 0xFF]
+                    ^ U2[(tt >> 16) & 0xFF]
+                    ^ U3[(tt >> 8) & 0xFF]
+                    ^ U4[tt & 0xFF]
                 )
         self.Ke = k_e
         self.Kd = k_d
 
-    def encrypt(self, source):
+    def encrypt(self, source: bytes) -> bytes:
 
         if len(source) != self.block_size:
             raise ValueError(
-                'Wrong block length, expected %s got %s' % (
-                    str(self.block_size),
-                    str(len(source))
-                )
+                "Wrong block length, expected %s got %s"
+                % (str(self.block_size), str(len(source)))
             )
 
         k_e = self.Ke
@@ -114,17 +139,24 @@ class Rijndael:
         t = []
         # source to ints + key
         for i in range(b_c):
-            t.append((ord(source[i * 4: i * 4 + 1]) << 24 |
-                      ord(source[i * 4 + 1: i * 4 + 1 + 1]) << 16 |
-                      ord(source[i * 4 + 2: i * 4 + 2 + 1]) << 8 |
-                      ord(source[i * 4 + 3: i * 4 + 3 + 1])) ^ k_e[0][i])
+            t.append(
+                (
+                    source[i * 4] << 24
+                    | source[i * 4 + 1] << 16
+                    | source[i * 4 + 2] << 8
+                    | source[i * 4 + 3]
+                )
+                ^ k_e[0][i]
+            )
         # apply round transforms
         for r in range(1, rounds):
             for i in range(b_c):
-                a[i] = (T1[(t[i] >> 24) & 0xFF] ^
-                        T2[(t[(i + s1) % b_c] >> 16) & 0xFF] ^
-                        T3[(t[(i + s2) % b_c] >> 8) & 0xFF] ^
-                        T4[t[(i + s3) % b_c] & 0xFF]) ^ k_e[r][i]
+                a[i] = (
+                    T1[(t[i] >> 24) & 0xFF]
+                    ^ T2[(t[(i + s1) % b_c] >> 16) & 0xFF]
+                    ^ T3[(t[(i + s2) % b_c] >> 8) & 0xFF]
+                    ^ T4[t[(i + s3) % b_c] & 0xFF]
+                ) ^ k_e[r][i]
             t = copy.copy(a)
         # last round is special
         result = []
@@ -139,13 +171,11 @@ class Rijndael:
             out += bytes([xx])
         return out
 
-    def decrypt(self, cipher):
+    def decrypt(self, cipher: bytes) -> bytes:
         if len(cipher) != self.block_size:
             raise ValueError(
-                'wrong block length, expected %s got %s' % (
-                    str(self.block_size),
-                    str(len(cipher))
-                )
+                "wrong block length, expected %s got %s"
+                % (str(self.block_size), str(len(cipher)))
             )
 
         k_d = self.Kd
@@ -165,17 +195,21 @@ class Rijndael:
         t = [0] * b_c
         # cipher to ints + key
         for i in range(b_c):
-            t[i] = (ord(cipher[i * 4: i * 4 + 1]) << 24 |
-                    ord(cipher[i * 4 + 1: i * 4 + 1 + 1]) << 16 |
-                    ord(cipher[i * 4 + 2: i * 4 + 2 + 1]) << 8 |
-                    ord(cipher[i * 4 + 3: i * 4 + 3 + 1])) ^ k_d[0][i]
+            t[i] = (
+                cipher[i * 4] << 24
+                | cipher[i * 4 + 1] << 16
+                | cipher[i * 4 + 2] << 8
+                | cipher[i * 4 + 3]
+            ) ^ k_d[0][i]
         # apply round transforms
         for r in range(1, rounds):
             for i in range(b_c):
-                a[i] = (T5[(t[i] >> 24) & 0xFF] ^
-                        T6[(t[(i + s1) % b_c] >> 16) & 0xFF] ^
-                        T7[(t[(i + s2) % b_c] >> 8) & 0xFF] ^
-                        T8[t[(i + s3) % b_c] & 0xFF]) ^ k_d[r][i]
+                a[i] = (
+                    T5[(t[i] >> 24) & 0xFF]
+                    ^ T6[(t[(i + s1) % b_c] >> 16) & 0xFF]
+                    ^ T7[(t[(i + s2) % b_c] >> 8) & 0xFF]
+                    ^ T8[t[(i + s3) % b_c] & 0xFF]
+                ) ^ k_d[r][i]
             t = copy.copy(a)
         # last round is special
         result = []
@@ -192,20 +226,21 @@ class Rijndael:
 
 
 class RijndaelCbc(Rijndael):
-
-    def __init__(self, key: bytes, iv: bytes, padding: PaddingBase, block_size: int=16):
+    def __init__(
+        self, key: bytes, iv: bytes, padding: PaddingBase, block_size: int = 16
+    ):
         super().__init__(key=key, block_size=block_size)
         self.iv = iv
         self.padding = padding
 
-    def encrypt(self, source: bytes):
+    def encrypt(self, source: bytes) -> bytes:
         ppt = self.padding.encode(source)
         offset = 0
 
         ct = bytes()
         v = self.iv
         while offset < len(ppt):
-            block = ppt[offset:offset + self.block_size]
+            block = ppt[offset : offset + self.block_size]
             block = self.x_or_block(block, v)
             block = super().encrypt(block)
             ct += block
@@ -213,13 +248,13 @@ class RijndaelCbc(Rijndael):
             v = block
         return ct
 
-    def decrypt(self, cipher):
+    def decrypt(self, cipher: bytes) -> bytes:
         assert len(cipher) % self.block_size == 0
         ppt = bytes()
         offset = 0
         v = self.iv
         while offset < len(cipher):
-            block = cipher[offset:offset + self.block_size]
+            block = cipher[offset : offset + self.block_size]
             decrypted = super().decrypt(block)
             ppt += self.x_or_block(decrypted, v)
             offset += self.block_size
@@ -227,10 +262,5 @@ class RijndaelCbc(Rijndael):
         pt = self.padding.decode(ppt)
         return pt
 
-    def x_or_block(self, b1, b2):
-        i = 0
-        r = bytes()
-        while i < self.block_size:
-            r += bytes([ord(b1[i:i+1]) ^ ord(b2[i:i+1])])
-            i += 1
-        return r
+    def x_or_block(self, b1: bytes, b2: bytes) -> bytes:
+        return bytes(b1[i] ^ b2[i] for i in range(self.block_size))

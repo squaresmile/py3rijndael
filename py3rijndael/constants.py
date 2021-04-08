@@ -1,23 +1,21 @@
+from typing import Iterable
 
-shifts = [[[0, 0], [1, 3], [2, 2], [3, 1]],
-          [[0, 0], [1, 5], [2, 4], [3, 3]],
-          [[0, 0], [1, 7], [3, 5], [4, 4]]]
+shifts = (
+    ((0, 0), (1, 3), (2, 2), (3, 1)),
+    ((0, 0), (1, 5), (2, 4), (3, 3)),
+    ((0, 0), (1, 7), (3, 5), (4, 4)),
+)
 
-# [key_size][block_size]
-num_rounds = {
-    16: {16: 10, 24: 12, 32: 14},
-    24: {16: 12, 24: 12, 32: 14},
-    32: {16: 14, 24: 14, 32: 14}
-}
-
-A = [[1, 1, 1, 1, 1, 0, 0, 0],
-     [0, 1, 1, 1, 1, 1, 0, 0],
-     [0, 0, 1, 1, 1, 1, 1, 0],
-     [0, 0, 0, 1, 1, 1, 1, 1],
-     [1, 0, 0, 0, 1, 1, 1, 1],
-     [1, 1, 0, 0, 0, 1, 1, 1],
-     [1, 1, 1, 0, 0, 0, 1, 1],
-     [1, 1, 1, 1, 0, 0, 0, 1]]
+A = (
+    (1, 1, 1, 1, 1, 0, 0, 0),
+    (0, 1, 1, 1, 1, 1, 0, 0),
+    (0, 0, 1, 1, 1, 1, 1, 0),
+    (0, 0, 0, 1, 1, 1, 1, 1),
+    (1, 0, 0, 0, 1, 1, 1, 1),
+    (1, 1, 0, 0, 0, 1, 1, 1),
+    (1, 1, 1, 0, 0, 0, 1, 1),
+    (1, 1, 1, 1, 0, 0, 0, 1),
+)
 
 # produce log and a_log tables, needed for multiplying in the
 # field GF(2^m) (generator = 3)
@@ -34,10 +32,11 @@ for i in range(1, 255):
 
 
 # multiply two elements of GF(2^m)
-def mul(a, b):
+def mul(a: int, b: int) -> int:
     if a == 0 or b == 0:
         return 0
     return a_log[(log[a & 0xFF] + log[b & 0xFF]) % 255]
+
 
 # substitution box based on F^{-1}(x)
 box = [[0] * 8 for i in range(256)]
@@ -63,23 +62,18 @@ Si = [0] * 256
 for i in range(256):
     S[i] = cox[i][0] << 7
     for t in range(1, 8):
-        S[i] ^= cox[i][t] << (7-t)
+        S[i] ^= cox[i][t] << (7 - t)
     Si[S[i] & 0xFF] = i
 
 # T-boxes
-G = [
-    [2, 1, 1, 3],
-    [3, 2, 1, 1],
-    [1, 3, 2, 1],
-    [1, 1, 3, 2]
-]
+G = ((2, 1, 1, 3), (3, 2, 1, 1), (1, 3, 2, 1), (1, 1, 3, 2))
 
 AA = [[0] * 8 for i in range(4)]
 
 for i in range(4):
     for j in range(4):
         AA[i][j] = G[i][j]
-        AA[i][i+4] = 1
+        AA[i][i + 4] = 1
 
 for i in range(4):
     pivot = AA[i][i]
@@ -88,7 +82,7 @@ for i in range(4):
             AA[i][j] = a_log[(255 + log[AA[i][j] & 0xFF] - log[pivot & 0xFF]) % 255]
     for t in range(4):
         if i != t:
-            for j in range(i+1, 8):
+            for j in range(i + 1, 8):
                 AA[t][j] ^= mul(AA[i][j], AA[t][i])
             AA[t][i] = 0
 
@@ -99,7 +93,7 @@ for i in range(4):
         iG[i][j] = AA[i][j + 4]
 
 
-def mul4(a, bs):
+def mul4(a: int, bs: Iterable[int]) -> int:
     if a == 0:
         return 0
     rr = 0
@@ -109,18 +103,19 @@ def mul4(a, bs):
             rr = rr | mul(a, b)
     return rr
 
-T1 = []
-T2 = []
-T3 = []
-T4 = []
-T5 = []
-T6 = []
-T7 = []
-T8 = []
-U1 = []
-U2 = []
-U3 = []
-U4 = []
+
+T1: list[int] = []
+T2: list[int] = []
+T3: list[int] = []
+T4: list[int] = []
+T5: list[int] = []
+T6: list[int] = []
+T7: list[int] = []
+T8: list[int] = []
+U1: list[int] = []
+U2: list[int] = []
+U3: list[int] = []
+U4: list[int] = []
 
 for t in range(256):
     s = S[t]
