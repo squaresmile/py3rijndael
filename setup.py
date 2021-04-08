@@ -27,6 +27,15 @@ setup(
     url="https://github.com/meyt/py3rijndael",
     packages=find_packages(),
     license="MIT License",
+    ext_modules=mypycify(
+        [
+            "--strict",
+            "py3rijndael/__init__.py",
+            "py3rijndael/constants.py",
+            "py3rijndael/paddings.py",
+            "py3rijndael/rijndael.py",
+        ]
+    ),
     classifiers=[
         "Environment :: Console",
         "Topic :: Security :: Cryptography",
