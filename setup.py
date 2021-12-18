@@ -36,6 +36,7 @@ setup(
             "py3rijndael/rijndael.py",
         ]
     ),
+    setup_requires=["mypy"],
     classifiers=[
         "Environment :: Console",
         "Topic :: Security :: Cryptography",

@@ -49,7 +49,7 @@ class Rijndael:
         k_c = len(key) // 4
 
         # copy user material bytes into temporary ints
-        tk = []
+        tk: list[int] = []
         for i in range(0, k_c):
             tk.append(
                 key[i * 4] << 24
@@ -136,7 +136,7 @@ class Rijndael:
         s3 = shifts[s_c][3][0]
         a = [0] * b_c
         # temporary work array
-        t = []
+        t: list[int] = []
         # source to ints + key
         for i in range(b_c):
             t.append(
@@ -159,7 +159,7 @@ class Rijndael:
                 ) ^ k_e[r][i]
             t = copy.copy(a)
         # last round is special
-        result = []
+        result: list[int] = []
         for i in range(b_c):
             tt = k_e[rounds][i]
             result.append((S[(t[i] >> 24) & 0xFF] ^ (tt >> 24)) & 0xFF)
@@ -212,7 +212,7 @@ class Rijndael:
                 ) ^ k_d[r][i]
             t = copy.copy(a)
         # last round is special
-        result = []
+        result: list[int] = []
         for i in range(b_c):
             tt = k_d[rounds][i]
             result.append((Si[(t[i] >> 24) & 0xFF] ^ (tt >> 24)) & 0xFF)

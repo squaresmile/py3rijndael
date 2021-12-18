@@ -39,7 +39,7 @@ def mul(a: int, b: int) -> int:
 
 
 # substitution box based on F^{-1}(x)
-box = [[0] * 8 for i in range(256)]
+box = [[0] * 8 for _ in range(256)]
 box[1][7] = 1
 for i in range(2, 256):
     j = a_log[255 - log[i]]
@@ -49,7 +49,7 @@ for i in range(2, 256):
 B = [0, 1, 1, 0, 0, 0, 1, 1]
 
 # affine transform:  box[i] <- B + A*box[i]
-cox = [[0] * 8 for i in range(256)]
+cox = [[0] * 8 for _ in range(256)]
 for i in range(256):
     for t in range(8):
         cox[i][t] = B[t]
@@ -68,7 +68,7 @@ for i in range(256):
 # T-boxes
 G = ((2, 1, 1, 3), (3, 2, 1, 1), (1, 3, 2, 1), (1, 1, 3, 2))
 
-AA = [[0] * 8 for i in range(4)]
+AA = [[0] * 8 for _ in range(4)]
 
 for i in range(4):
     for j in range(4):
@@ -86,7 +86,7 @@ for i in range(4):
                 AA[t][j] ^= mul(AA[i][j], AA[t][i])
             AA[t][i] = 0
 
-iG = [[0] * 4 for i in range(4)]
+iG = [[0] * 4 for _ in range(4)]
 
 for i in range(4):
     for j in range(4):
