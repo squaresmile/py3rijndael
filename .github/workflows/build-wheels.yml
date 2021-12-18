@@ -23,7 +23,7 @@ jobs:
         if: runner.os == 'Linux'
         uses: docker/setup-qemu-action@v1
         with:
-          platforms: aarch64
+          platforms: all
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.3.1
         env:
@@ -36,7 +36,7 @@ jobs:
         with:
           name: wheels
           path: ./wheelhouse/*.whl
-          
+
   github-release:
     name: Release
     runs-on: ubuntu-latest
