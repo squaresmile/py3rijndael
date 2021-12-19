@@ -1,5 +1,3 @@
-import copy
-
 from py3rijndael.constants import (
     T1,
     T2,
@@ -25,10 +23,10 @@ class Rijndael:
     def __init__(self, key: bytes, block_size: int = 16):
 
         if block_size not in (16, 24, 32):
-            raise ValueError("Invalid block size: %s" % str(block_size))
+            raise ValueError(f"Invalid block size: {block_size}")
 
         if len(key) not in (16, 24, 32):
-            raise ValueError("Invalid key size: %s" % str(len(key)))
+            raise ValueError(f"Invalid key size: {len(key)}")
 
         self.block_size = block_size
         self.key = key
@@ -49,14 +47,13 @@ class Rijndael:
         k_c = len(key) // 4
 
         # copy user material bytes into temporary ints
-        tk: list[int] = []
-        for i in range(0, k_c):
-            tk.append(
-                key[i * 4] << 24
-                | key[i * 4 + 1] << 16
-                | key[i * 4 + 2] << 8
-                | key[i * 4 + 3]
-            )
+        tk = [
+            key[i * 4] << 24
+            | key[i * 4 + 1] << 16
+            | key[i * 4 + 2] << 8
+            | key[i * 4 + 3]
+            for i in range(k_c)
+        ]
 
         # copy values into round key arrays
         t = 0
@@ -117,8 +114,7 @@ class Rijndael:
 
         if len(source) != self.block_size:
             raise ValueError(
-                "Wrong block length, expected %s got %s"
-                % (str(self.block_size), str(len(source)))
+                f"Wrong block length, expected {self.block_size} got {len(source)}"
             )
 
         k_e = self.Ke
@@ -136,28 +132,29 @@ class Rijndael:
         s3 = shifts[s_c][3][0]
         a = [0] * b_c
         # temporary work array
-        t: list[int] = []
-        # source to ints + key
-        for i in range(b_c):
-            t.append(
-                (
-                    source[i * 4] << 24
-                    | source[i * 4 + 1] << 16
-                    | source[i * 4 + 2] << 8
-                    | source[i * 4 + 3]
-                )
-                ^ k_e[0][i]
+        t = [
+            (
+                source[i * 4] << 24
+                | source[i * 4 + 1] << 16
+                | source[i * 4 + 2] << 8
+                | source[i * 4 + 3]
             )
+            ^ k_e[0][i]
+            for i in range(b_c)
+        ]
         # apply round transforms
         for r in range(1, rounds):
-            for i in range(b_c):
-                a[i] = (
+            a = [
+                (
                     T1[(t[i] >> 24) & 0xFF]
                     ^ T2[(t[(i + s1) % b_c] >> 16) & 0xFF]
                     ^ T3[(t[(i + s2) % b_c] >> 8) & 0xFF]
                     ^ T4[t[(i + s3) % b_c] & 0xFF]
-                ) ^ k_e[r][i]
-            t = copy.copy(a)
+                )
+                ^ k_e[r][i]
+                for i in range(b_c)
+            ]
+            t = a.copy()
         # last round is special
         result: list[int] = []
         for i in range(b_c):
@@ -166,16 +163,13 @@ class Rijndael:
             result.append((S[(t[(i + s1) % b_c] >> 16) & 0xFF] ^ (tt >> 16)) & 0xFF)
             result.append((S[(t[(i + s2) % b_c] >> 8) & 0xFF] ^ (tt >> 8)) & 0xFF)
             result.append((S[t[(i + s3) % b_c] & 0xFF] ^ tt) & 0xFF)
-        out = bytes()
-        for xx in result:
-            out += bytes([xx])
-        return out
+
+        return bytes(result)
 
     def decrypt(self, cipher: bytes) -> bytes:
         if len(cipher) != self.block_size:
             raise ValueError(
-                "wrong block length, expected %s got %s"
-                % (str(self.block_size), str(len(cipher)))
+                f"wrong block length, expected {self.block_size} got {len(cipher)}"
             )
 
         k_d = self.Kd
@@ -190,27 +184,30 @@ class Rijndael:
         s1 = shifts[s_c][1][1]
         s2 = shifts[s_c][2][1]
         s3 = shifts[s_c][3][1]
-        a = [0] * b_c
         # temporary work array
-        t = [0] * b_c
-        # cipher to ints + key
-        for i in range(b_c):
-            t[i] = (
+        t = [
+            (
                 cipher[i * 4] << 24
                 | cipher[i * 4 + 1] << 16
                 | cipher[i * 4 + 2] << 8
                 | cipher[i * 4 + 3]
-            ) ^ k_d[0][i]
+            )
+            ^ k_d[0][i]
+            for i in range(b_c)
+        ]
         # apply round transforms
         for r in range(1, rounds):
-            for i in range(b_c):
-                a[i] = (
+            a = [
+                (
                     T5[(t[i] >> 24) & 0xFF]
                     ^ T6[(t[(i + s1) % b_c] >> 16) & 0xFF]
                     ^ T7[(t[(i + s2) % b_c] >> 8) & 0xFF]
                     ^ T8[t[(i + s3) % b_c] & 0xFF]
-                ) ^ k_d[r][i]
-            t = copy.copy(a)
+                )
+                ^ k_d[r][i]
+                for i in range(b_c)
+            ]
+            t = a.copy()
         # last round is special
         result: list[int] = []
         for i in range(b_c):
@@ -219,10 +216,8 @@ class Rijndael:
             result.append((Si[(t[(i + s1) % b_c] >> 16) & 0xFF] ^ (tt >> 16)) & 0xFF)
             result.append((Si[(t[(i + s2) % b_c] >> 8) & 0xFF] ^ (tt >> 8)) & 0xFF)
             result.append((Si[t[(i + s3) % b_c] & 0xFF] ^ tt) & 0xFF)
-        out = bytes()
-        for xx in result:
-            out += bytes([xx])
-        return out
+
+        return bytes(result)
 
 
 class RijndaelCbc(Rijndael):
