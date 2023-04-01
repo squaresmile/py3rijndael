@@ -18,20 +18,21 @@ jobs:
         os: [ubuntu-latest, windows-latest]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up QEMU
         if: runner.os == 'Linux'
         uses: docker/setup-qemu-action@v1
         with:
           platforms: all
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.3.1
+        uses: pypa/cibuildwheel@v2.12.1
         env:
           CIBW_BEFORE_BUILD: pip install mypy
           CIBW_ARCHS_LINUX: auto aarch64
           CIBW_BUILD: |
             cp39-win_amd64 cp39-manylinux_x86_64 cp39-manylinux_aarch64
             cp310-win_amd64 cp310-manylinux_x86_64 cp310-manylinux_aarch64
+            cp311-win_amd64 cp311-manylinux_x86_64 cp311-manylinux_aarch64
       - uses: actions/upload-artifact@v2
         with:
           name: wheels
